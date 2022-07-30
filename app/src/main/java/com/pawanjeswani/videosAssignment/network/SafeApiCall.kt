@@ -8,7 +8,7 @@ interface SafeApiCall {
     suspend fun <T> safeApi(
         apiCall: suspend () -> T
     ): Resource<T> {
-        return withContext(Dispatchers.IO) {
+        return withContext(Dispatchers.Default) {
             try {
                 Resource.Success(apiCall.invoke())
             } catch (throwable: Throwable) {
