@@ -5,6 +5,7 @@
       <map>
         <entry key="app/src/main/res/drawable/circle.xml" value="0.209" />
         <entry key="app/src/main/res/layout/activity_main.xml" value="0.33541666666666664" />
+        <entry key="app/src/main/res/layout/exo_player_control_view.xml" value="0.33541666666666664" />
         <entry key="app/src/main/res/layout/item_video_story.xml" value="0.33541666666666664" />
       </map>
     </option>
