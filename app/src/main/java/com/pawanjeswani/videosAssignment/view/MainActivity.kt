@@ -15,6 +15,7 @@ import androidx.core.content.ContextCompat
 import androidx.lifecycle.lifecycleScope
 import com.google.android.exoplayer2.ExoPlayer
 import com.google.android.exoplayer2.MediaItem
+import com.google.android.exoplayer2.ui.PlayerControlView
 import com.google.android.exoplayer2.ui.PlayerView
 import com.google.android.exoplayer2.util.EventLogger
 import com.google.android.exoplayer2.util.Util
@@ -28,6 +29,7 @@ import com.pawanjeswani.videosAssignment.viewmodel.VideoViewModel
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.launch
 
+
 const val STATE_RESUME_WINDOW = "resumeWindow"
 const val STATE_RESUME_POSITION = "resumePosition"
 const val STATE_PLAYER_FULLSCREEN = "playerFullscreen"
@@ -39,18 +41,21 @@ class MainActivity : AppCompatActivity(), StoryClickListener {
     private lateinit var binding: ActivityMainBinding
     private lateinit var player: ExoPlayer
     private lateinit var playerView: PlayerView
+    private lateinit var controlView: PlayerControlView
     private lateinit var exoFullScreenIcon: ImageView
-    private lateinit var exoFullScreenBtn: FrameLayout
+    private lateinit var exoMuteUnmuteIcon: ImageView
     private lateinit var mainFrameLayout: FrameLayout
 
     private var fullscreenDialog: Dialog? = null
+    private var isMuted = false
     private var loadedNewVideo = false
+    private var durationSet = false
     private var currentWindow = 0
     private var playbackPosition: Long = 0
     private var isFullscreen = false
     private var isPlayerPlaying = true
     private var mediaItem: MediaItem? =
-        MediaItem.fromUri("https://cdn.pixabay.com/vimeo/257440813/Flower%20-%2014521.mp4?width=960&hash=b6e248a78ed19f4c188d546d0d35a434ad7fabbd")
+        MediaItem.fromUri("http://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4")
 
     private val adapter by lazy {
         VideoStoryAdapter(this)
@@ -64,9 +69,10 @@ class MainActivity : AppCompatActivity(), StoryClickListener {
 
         //video player setup
         playerView = binding.playerView
+        controlView = playerView.findViewById(com.google.android.exoplayer2.ui.R.id.exo_controller)
         mainFrameLayout = binding.mainMediaFrame
-        exoFullScreenBtn = playerView.findViewById(R.id.exo_fullscreen_button)
         exoFullScreenIcon = playerView.findViewById(R.id.exo_fullscreen_icon)
+        exoMuteUnmuteIcon = playerView.findViewById(R.id.exo_mute_unmute_icon)
         binding.playerView.setShutterBackgroundColor(Color.TRANSPARENT)
 
         //full screen
@@ -107,6 +113,7 @@ class MainActivity : AppCompatActivity(), StoryClickListener {
         player.addAnalyticsListener(EventLogger())
         playerView.player = player
         if (isFullscreen) openFullscreenDialog()
+        player.setPlaybackSpeed(1.8f)
     }
 
     private fun releasePlayer() {
@@ -121,6 +128,7 @@ class MainActivity : AppCompatActivity(), StoryClickListener {
             }
         }
     }
+
     override fun onSaveInstanceState(outState: Bundle) {
         outState.putInt(STATE_RESUME_WINDOW, player.currentMediaItemIndex)
         outState.putLong(STATE_RESUME_POSITION, player.currentPosition)
@@ -188,18 +196,20 @@ class MainActivity : AppCompatActivity(), StoryClickListener {
 
 
     // FULLSCREEN PART
-
     private fun initFullScreenDialog() {
-        fullscreenDialog = object: Dialog(this, android.R.style.Theme_Black_NoTitleBar_Fullscreen) {
-            override fun onBackPressed() {
-                if(isFullscreen) closeFullscreenDialog()
-                super.onBackPressed()
+        fullscreenDialog =
+            object : Dialog(this, android.R.style.Theme_Black_NoTitleBar_Fullscreen) {
+                override fun onBackPressed() {
+                    if (isFullscreen) closeFullscreenDialog()
+                    super.onBackPressed()
+                }
             }
-        }
     }
 
-    private fun initFullScreenButton(){
-        exoFullScreenBtn.setOnClickListener {
+    private fun initFullScreenButton() {
+        exoMuteUnmuteIcon.setDrawable(R.drawable.ic_baseline_volume_up_24)
+        exoMuteUnmuteIcon.setOnClickListener { toggleMuteStatus() }
+        exoFullScreenIcon.setOnClickListener {
             if (!isFullscreen) {
                 openFullscreenDialog()
             } else {
@@ -208,12 +218,29 @@ class MainActivity : AppCompatActivity(), StoryClickListener {
         }
     }
 
+    private fun toggleMuteStatus() {
+        isMuted = !isMuted
+        if (isMuted) {
+            exoMuteUnmuteIcon.setDrawable(R.drawable.ic_baseline_volume_mute_24)
+            player.volume = 0f
+        } else {
+            exoMuteUnmuteIcon.setDrawable(R.drawable.ic_baseline_volume_up_24)
+            player.volume = 1.0f
+        }
+    }
+
     @SuppressLint("SourceLockedOrientationActivity")
     private fun openFullscreenDialog() {
-        exoFullScreenIcon.setImageDrawable(ContextCompat.getDrawable(this, R.drawable.full_screen_shrink))
+        exoFullScreenIcon.setDrawable(R.drawable.full_screen_shrink)
         requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE
         (playerView.parent as ViewGroup).removeView(playerView)
-        fullscreenDialog?.addContentView(playerView, ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT))
+        fullscreenDialog?.addContentView(
+            playerView,
+            ViewGroup.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT,
+                ViewGroup.LayoutParams.MATCH_PARENT
+            )
+        )
         isFullscreen = true
         fullscreenDialog?.show()
     }
@@ -222,7 +249,8 @@ class MainActivity : AppCompatActivity(), StoryClickListener {
         requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_USER_PORTRAIT
         (playerView.parent as ViewGroup).removeView(playerView)
         mainFrameLayout.addView(playerView)
-        exoFullScreenIcon.setImageDrawable(ContextCompat.getDrawable(this, R.drawable.ic_fullscreen_expand))
+        exoFullScreenIcon.setDrawable(R.drawable.ic_fullscreen_expand)
+
         isFullscreen = false
         fullscreenDialog?.dismiss()
     }
@@ -234,6 +262,7 @@ class MainActivity : AppCompatActivity(), StoryClickListener {
         }
         super.onBackPressed()
     }
+
     override fun onStoryClicked(hit: Hit) {
         mediaItem = null
         mediaItem = hit.videos?.medium?.url?.let { MediaItem.fromUri(it) }
@@ -241,4 +270,14 @@ class MainActivity : AppCompatActivity(), StoryClickListener {
         initPlayer()
         Toast.makeText(this, "clicked ${hit.pictureId}", Toast.LENGTH_SHORT).show()
     }
+}
+
+
+fun ImageView.setDrawable(source: Int) {
+    this.setImageDrawable(
+        ContextCompat.getDrawable(
+            this.context,
+            source
+        )
+    )
 }
