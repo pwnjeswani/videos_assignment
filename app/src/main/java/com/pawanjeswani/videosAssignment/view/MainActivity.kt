@@ -5,13 +5,15 @@ import android.app.Dialog
 import android.content.pm.ActivityInfo
 import android.graphics.Color
 import android.os.Bundle
+import android.os.Handler
+import android.os.Looper
+import android.util.Log
 import android.view.ViewGroup
 import android.widget.FrameLayout
 import android.widget.ImageView
 import android.widget.Toast
 import androidx.activity.viewModels
 import androidx.appcompat.app.AppCompatActivity
-import androidx.core.content.ContextCompat
 import androidx.lifecycle.lifecycleScope
 import com.google.android.exoplayer2.ExoPlayer
 import com.google.android.exoplayer2.MediaItem
@@ -25,6 +27,7 @@ import com.pawanjeswani.videosAssignment.model.Hit
 import com.pawanjeswani.videosAssignment.network.Resource
 import com.pawanjeswani.videosAssignment.view.adapter.StoryClickListener
 import com.pawanjeswani.videosAssignment.view.adapter.VideoStoryAdapter
+import com.pawanjeswani.videosAssignment.view.utils.setDrawable
 import com.pawanjeswani.videosAssignment.viewmodel.VideoViewModel
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.launch
@@ -45,6 +48,7 @@ class MainActivity : AppCompatActivity(), StoryClickListener {
     private lateinit var exoFullScreenIcon: ImageView
     private lateinit var exoMuteUnmuteIcon: ImageView
     private lateinit var mainFrameLayout: FrameLayout
+    val mainHandler = Handler(Looper.getMainLooper())
 
     private var fullscreenDialog: Dialog? = null
     private var isMuted = false
@@ -54,8 +58,7 @@ class MainActivity : AppCompatActivity(), StoryClickListener {
     private var playbackPosition: Long = 0
     private var isFullscreen = false
     private var isPlayerPlaying = true
-    private var mediaItem: MediaItem? =
-        MediaItem.fromUri("http://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4")
+    private var mediaItem: MediaItem? = null
 
     private val adapter by lazy {
         VideoStoryAdapter(this)
@@ -66,6 +69,11 @@ class MainActivity : AppCompatActivity(), StoryClickListener {
         super.onCreate(savedInstanceState)
         binding = ActivityMainBinding.inflate(layoutInflater)
         setContentView(binding.root)
+
+        // fetch videos part
+        binding.rvVideos.adapter = adapter
+        startObserving()
+        fetchVideosList()
 
         //video player setup
         playerView = binding.playerView
@@ -79,11 +87,6 @@ class MainActivity : AppCompatActivity(), StoryClickListener {
         initFullScreenDialog()
         initFullScreenButton()
 
-        // fetch videos part
-        binding.rvVideos.adapter = adapter
-        startObserving()
-        fetchVideosList()
-
         if (savedInstanceState != null) {
             currentWindow = savedInstanceState.getInt(STATE_RESUME_WINDOW)
             playbackPosition = savedInstanceState.getLong(STATE_RESUME_POSITION)
@@ -92,7 +95,30 @@ class MainActivity : AppCompatActivity(), StoryClickListener {
         }
     }
 
+    private fun startObserving() {
+        videoViewModel.videosResponse.observe(this) {
+            when (it) {
+                is Resource.Success -> {
+                    val videoResponse = it.value.body()
+                    videoResponse?.let { response ->
+                        val list = response.hits as MutableList<Hit>
+                        onStoryClicked(list[0])
+                        adapter.submitList(list)
+                    }
+                }
 
+                is Resource.Failure -> {
+                    Toast.makeText(this, "failed${it.errorBody}", Toast.LENGTH_SHORT).show()
+                }
+
+                Resource.Loading -> {
+
+                }
+            }
+        }
+    }
+
+    // api calling function
     private fun fetchVideosList() {
         lifecycleScope.launch {
             videoViewModel.fetchWeather("red flowers")
@@ -113,7 +139,14 @@ class MainActivity : AppCompatActivity(), StoryClickListener {
         player.addAnalyticsListener(EventLogger())
         playerView.player = player
         if (isFullscreen) openFullscreenDialog()
-        player.setPlaybackSpeed(1.8f)
+        //Function to update position
+        mainHandler.postDelayed(object : Runnable {
+            override fun run() {
+                playbackPosition = player.currentPosition;
+                Log.d("handler", "$playbackPosition")
+                mainHandler.postDelayed(this, 1000);
+            }
+        }, 1000)
     }
 
     private fun releasePlayer() {
@@ -136,31 +169,6 @@ class MainActivity : AppCompatActivity(), StoryClickListener {
         outState.putBoolean(STATE_PLAYER_PLAYING, isPlayerPlaying)
         super.onSaveInstanceState(outState)
     }
-
-
-    private fun startObserving() {
-        videoViewModel.videosResponse.observe(this) {
-            when (it) {
-                is Resource.Success -> {
-                    val videoResponse = it.value.body()
-                    videoResponse?.let { response ->
-                        Toast.makeText(this, "Size is ${response.hits?.size}", Toast.LENGTH_SHORT)
-                            .show()
-                        adapter.submitList(response.hits as MutableList<Hit>)
-                    }
-                }
-
-                is Resource.Failure -> {
-                    Toast.makeText(this, "failed${it.errorBody}", Toast.LENGTH_SHORT).show()
-                }
-
-                Resource.Loading -> {
-
-                }
-            }
-        }
-    }
-
 
     override fun onStart() {
         super.onStart()
@@ -268,16 +276,6 @@ class MainActivity : AppCompatActivity(), StoryClickListener {
         mediaItem = hit.videos?.medium?.url?.let { MediaItem.fromUri(it) }
         loadedNewVideo = true
         initPlayer()
-        Toast.makeText(this, "clicked ${hit.pictureId}", Toast.LENGTH_SHORT).show()
+        hit.lastTimeClickedAt = System.currentTimeMillis()
     }
-}
-
-
-fun ImageView.setDrawable(source: Int) {
-    this.setImageDrawable(
-        ContextCompat.getDrawable(
-            this.context,
-            source
-        )
-    )
 }

@@ -20,8 +20,8 @@
         android:id="@+id/main_media_frame"
         android:layout_width="match_parent"
         android:layout_height="0dp"
-        app:layout_constraintBottom_toBottomOf="parent"
         android:background="@color/black"
+        app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toBottomOf="@id/rv_videos">
@@ -31,9 +31,9 @@
             android:layout_width="match_parent"
             android:layout_height="match_parent"
             android:focusable="true"
+            app:controller_layout_id="@layout/exo_player_control_view"
             app:keep_content_on_player_reset="true"
-            app:show_buffering="always"
-            app:use_controller="true" />
+            app:show_buffering="always" />
     </FrameLayout>
 
 </androidx.constraintlayout.widget.ConstraintLayout>

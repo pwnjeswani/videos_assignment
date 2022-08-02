@@ -30,7 +30,8 @@ data class Hit(
     @SerializedName("userImageURL")
     val userImageURL: String?,
     @SerializedName("videos")
-    val videos: Videos?
+    val videos: Videos?,
+    var lastTimeClickedAt:Long = 0L
 ) : Parcelable
 
 @Parcelize
