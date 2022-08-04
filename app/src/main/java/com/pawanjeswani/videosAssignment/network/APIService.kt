@@ -10,7 +10,9 @@ interface APIService {
     @GET("videos/")
     suspend fun fetchWeather(
         @Query("key") app_id: String,
-        @Query("q") query: String
+        @Query("q") query: String,
+        @Query("page") page: Int,
+        @Query("per_page") pageSize: Int
     ): Response<VideosResponse>
 
 }

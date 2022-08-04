@@ -15,6 +15,7 @@ import android.widget.Toast
 import androidx.activity.viewModels
 import androidx.appcompat.app.AppCompatActivity
 import androidx.lifecycle.lifecycleScope
+import androidx.recyclerview.widget.RecyclerView
 import com.google.android.exoplayer2.ExoPlayer
 import com.google.android.exoplayer2.MediaItem
 import com.google.android.exoplayer2.ui.PlayerControlView
@@ -59,12 +60,35 @@ class MainActivity : AppCompatActivity(), StoryClickListener {
     private var isFullscreen = false
     private var isPlayerPlaying = true
     private var mediaItem: MediaItem? = null
+    private var pageNo = 1
+    private val pageSize = 5
+    private var isLoading = false
 
     private val adapter by lazy {
         VideoStoryAdapter(this)
     }
     private val videoViewModel: VideoViewModel by viewModels()
+    val onScrollListener = object : RecyclerView.OnScrollListener() {
+        override fun onScrolled(recyclerView: RecyclerView, dx: Int, dy: Int) {
+            super.onScrolled(recyclerView, dx, dy)
+            // init
+            val layoutManager = recyclerView.layoutManager
+            val adapter = recyclerView.adapter
 
+            if (layoutManager != null && layoutManager.childCount > 0) {
+                // Calculations..
+                val indexOfLastItemViewVisible = layoutManager.childCount - 1
+                val lastItemViewVisible = layoutManager.getChildAt(indexOfLastItemViewVisible)
+                val adapterPosition = layoutManager.getPosition(lastItemViewVisible!!)
+                val isLastItemVisible = adapterPosition == adapter!!.itemCount - 1
+
+                // check
+                if (!isLoading && isLastItemVisible) {
+                    fetchVideosList()
+                }
+            }
+        }
+    }
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         binding = ActivityMainBinding.inflate(layoutInflater)
@@ -72,6 +96,7 @@ class MainActivity : AppCompatActivity(), StoryClickListener {
 
         // fetch videos part
         binding.rvVideos.adapter = adapter
+        binding.rvVideos.addOnScrollListener(onScrollListener)
         startObserving()
         fetchVideosList()
 
@@ -99,20 +124,23 @@ class MainActivity : AppCompatActivity(), StoryClickListener {
         videoViewModel.videosResponse.observe(this) {
             when (it) {
                 is Resource.Success -> {
+                    isLoading = false
                     val videoResponse = it.value.body()
                     videoResponse?.let { response ->
                         val list = response.hits as MutableList<Hit>
                         onStoryClicked(list[0])
                         adapter.submitList(list)
+                        pageNo++
                     }
                 }
 
                 is Resource.Failure -> {
+                    isLoading = false
                     Toast.makeText(this, "failed${it.errorBody}", Toast.LENGTH_SHORT).show()
                 }
 
                 Resource.Loading -> {
-
+                    isLoading = true
                 }
             }
         }
@@ -121,7 +149,7 @@ class MainActivity : AppCompatActivity(), StoryClickListener {
     // api calling function
     private fun fetchVideosList() {
         lifecycleScope.launch {
-            videoViewModel.fetchWeather("red flowers")
+            videoViewModel.fetchWeather("red flowers", page = pageNo, pageSize = pageSize)
         }
     }
 

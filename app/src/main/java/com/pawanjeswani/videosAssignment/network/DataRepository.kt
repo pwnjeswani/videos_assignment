@@ -7,12 +7,14 @@ import javax.inject.Inject
 
 class DataRepository @Inject constructor(private val dataService: APIService) : SafeApiCall {
 
-    suspend fun fetchWeather(query: String): Resource<Response<VideosResponse>> {
+    suspend fun fetchWeather(query: String, page:Int,pageSize:Int): Resource<Response<VideosResponse>> {
         val apiKey = BuildConfig.API_KEY
         return safeApi {
             dataService.fetchWeather(
                 app_id = apiKey,
-                query = query
+                query = query,
+                page = page,
+                pageSize= pageSize
             )
         }
     }

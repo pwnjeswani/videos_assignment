@@ -23,9 +23,9 @@ class VideoViewModel @Inject constructor(
     val videosResponse: LiveData<Resource<Response<VideosResponse>>>
         get() = _videosResponse
 
-    suspend fun fetchWeather(query: String) = viewModelScope.launch {
+    suspend fun fetchWeather(query: String, page: Int, pageSize: Int) = viewModelScope.launch {
         _videosResponse.value = Resource.Loading
-        _videosResponse.value = repository.fetchWeather(query)
+        _videosResponse.value = repository.fetchWeather(query, page = page, pageSize = pageSize)
     }
 }
 

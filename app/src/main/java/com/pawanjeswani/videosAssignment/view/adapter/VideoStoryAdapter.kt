@@ -12,7 +12,7 @@ class VideoStoryAdapter (private val listener:StoryClickListener): RecyclerView.
     var storyList = mutableListOf<Hit>()
 
     fun submitList(list: MutableList<Hit>) {
-        storyList = list
+        storyList.addAll(list)
         notifyItemRangeChanged(0, storyList.size)
     }
 
